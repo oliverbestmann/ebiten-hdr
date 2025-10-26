@@ -1,0 +1,51 @@
+//kage:unit pixels
+
+package main
+
+func LogLuvEncode(rgb vec3) vec4 {
+	m := transpose(mat3(
+		0.2209, 0.3390, 0.4184,
+		0.1138, 0.6780, 0.7319,
+		0.0102, 0.1130, 0.2969))
+
+	// convert to xyY (color + luma)
+	cc := max(rgb*m, vec3(1e-6))
+
+	// scale xy by luma value
+	xy := cc.xy / cc.z
+
+	// log encode luma
+	le := 2*log2(cc.z) + 127
+	a1 := fract(le)
+	a0 := (le - (floor(a1*255))/255) / 255
+
+	return vec4(xy, a0, a1)
+}
+
+func LogLuvLuma(lluv vec4) float {
+	le := lluv.z*255 + lluv.w
+	return exp2((le - 127) / 2)
+}
+
+func LogLuvDecode(lluv vec4) vec3 {
+	mInv := transpose(mat3(
+		6.0013, -2.700, -1.7995,
+		-1.332, 3.1029, -5.7720,
+		.3007, -1.088, 5.6268))
+
+	// decode log luma from two values
+	le := lluv.z*255 + lluv.w
+
+	var cc vec3
+
+	// restore luma value
+	cc.z = exp2((le - 127) / 2)
+
+	// restore xy color plane
+	cc.xy = lluv.xy * cc.z
+
+	// convert back to rgb
+	rgb := max(cc*mInv, vec3(0))
+
+	return rgb
+}
